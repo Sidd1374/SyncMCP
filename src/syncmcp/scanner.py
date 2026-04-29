@@ -108,18 +108,24 @@ class CodeScanner:
         return "\n".join(summary)
 
     def ai_summarize(self, api_key: str | None = None) -> dict[str, str]:
-        """Send codebase to Gemini and get structured context files back."""
-        import google.generativeai as genai
+        """Send codebase to LLM (Gemini, OpenAI, Anthropic, or Ollama) via LiteLLM."""
+        import litellm
+        from dotenv import load_dotenv
         
-        api_key = api_key or os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            return {
-                "error": "No Gemini API key found. Set GEMINI_API_KEY."
-            }
+        # Load .env if present
+        load_dotenv(self.root / ".env")
+        
+        # Priority: SYNC_MODEL > env variables
+        model_name = os.getenv("SYNC_MODEL", "gemini/gemini-1.5-flash")
+        
+        # Check for keys based on model
+        if "gemini" in model_name and not os.getenv("GEMINI_API_KEY"):
+             return {"error": "No GEMINI_API_KEY found in .env or environment."}
+        if "gpt" in model_name and not os.getenv("OPENAI_API_KEY"):
+             return {"error": "No OPENAI_API_KEY found in .env or environment."}
+        if "claude" in model_name and not os.getenv("ANTHROPIC_API_KEY"):
+             return {"error": "No ANTHROPIC_API_KEY found in .env or environment."}
 
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash") # Efficient for code analysis
-        
         code_bundle = self.prepare_codebase_summary()
         tree = file_mapper.generate_tree(self.root)
         
@@ -151,8 +157,13 @@ OUTPUT FORMAT (Exactly as follows with triple backticks and labels):
 """
 
         try:
-            response = model.generate_content(prompt)
-            text = response.text
+            # Universal completion call
+            response = litellm.completion(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                api_key=api_key # Can be None if set in environment
+            )
+            text = response.choices[0].message.content
             
             # Parse sections using regex
             arch = re.search(r"```arch\n(.*?)\n```", text, re.DOTALL)
@@ -165,7 +176,7 @@ OUTPUT FORMAT (Exactly as follows with triple backticks and labels):
                 "task": task.group(1) if task else "# Active Task\n(Parsing failed)"
             }
         except Exception as e:
-            return {"error": f"AI call failed: {str(e)}"}
+            return {"error": f"AI call failed ({model_name}): {str(e)}"}
 
     def _mock_ai_call(self, prompt: str) -> dict[str, str]:
         # This is now handled by ai_summarize
