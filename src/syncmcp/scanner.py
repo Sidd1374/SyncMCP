@@ -162,21 +162,44 @@ OUTPUT FORMAT (Exactly as follows with triple backticks and labels):
             response = litellm.completion(
                 model=model_name,
                 messages=[{"role": "user", "content": prompt}],
-                api_key=api_key, # Can be None if set in environment
-                # For Ollama, we don't need many extra params
+                api_key=api_key,
             )
             text = response.choices[0].message.content
             
-            # Parse sections using regex
-            arch = re.search(r"```arch\n(.*?)\n```", text, re.DOTALL)
-            theme = re.search(r"```theme\n(.*?)\n```", text, re.DOTALL)
-            task = re.search(r"```task\n(.*?)\n```", text, re.DOTALL)
+            # --- Robust Parsing ---
+            # Try backticks first
+            arch_m = re.search(r"```arch\n(.*?)(?:\n```|$)", text, re.DOTALL | re.IGNORECASE)
+            theme_m = re.search(r"```theme\n(.*?)(?:\n```|$)", text, re.DOTALL | re.IGNORECASE)
+            task_m = re.search(r"```task\n(.*?)(?:\n```|$)", text, re.DOTALL | re.IGNORECASE)
             
-            return {
-                "arch": arch.group(1) if arch else "# Architecture\n(Parsing failed)",
-                "theme": theme.group(1) if theme else "# Theme\n(Parsing failed)",
-                "task": task.group(1) if task else "# Active Task\n(Parsing failed)"
+            # Fallback to header detection if backticks fail
+            if not arch_m:
+                arch_m = re.search(r"(?:# Architecture|Architecture:)\n(.*?)(?=\n#|\n---|$)", text, re.DOTALL | re.IGNORECASE)
+            if not theme_m:
+                theme_m = re.search(r"(?:# Theme|Theme:)\n(.*?)(?=\n#|\n---|$)", text, re.DOTALL | re.IGNORECASE)
+            if not task_m:
+                task_m = re.search(r"(?:# Active Task|Task:)\n(.*?)(?=\n#|\n---|$)", text, re.DOTALL | re.IGNORECASE)
+
+            results = {
+                "arch": arch_m.group(1).strip() if arch_m else text[:500], # Fallback to start of text
+                "theme": theme_m.group(1).strip() if theme_m else "# Theme\n(Parsing failed - check raw output)",
+                "task": task_m.group(1).strip() if task_m else "# Active Task\n(Parsing failed - check raw output)"
             }
+
+            # --- GPU Unload (for Ollama) ---
+            if "ollama" in model_name:
+                print(f"🧹 Unloading {model_name} from GPU...")
+                try:
+                    import requests
+                    model_id = model_name.split("/")[-1]
+                    # Sending keep_alive: 0 to Ollama forces immediate unload
+                    requests.post("http://localhost:11434/api/generate", 
+                                 json={"model": model_id, "keep_alive": 0},
+                                 timeout=5)
+                except:
+                    pass
+
+            return results
         except Exception as e:
             return {"error": f"AI call failed ({model_name}): {str(e)}"}
 
