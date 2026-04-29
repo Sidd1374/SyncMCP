@@ -145,14 +145,82 @@ except Exception:
 
 
 # ──────────────────────────────────────────────
-#  CLI entry point
+#  Custom help formatter
 # ──────────────────────────────────────────────
 
-@click.group()
+HELP_TEXT = """\
+\b
+  ███████╗██╗   ██╗███╗   ██╗ ██████╗███╗   ███╗ ██████╗██████╗
+  ██╔════╝╚██╗ ██╔╝████╗  ██║██╔════╝████╗ ████║██╔════╝██╔══██╗
+  ███████╗ ╚████╔╝ ██╔██╗ ██║██║     ██╔████╔██║██║     ██████╔╝
+  ╚════██║  ╚██╔╝  ██║╚██╗██║██║     ██║╚██╔╝██║██║     ██╔═══╝
+  ███████║   ██║   ██║ ╚████║╚██████╗██║ ╚═╝ ██║╚██████╗██║
+  ╚══════╝   ╚═╝   ╚═╝  ╚═══╝ ╚═════╝╚═╝     ╚═╝ ╚═════╝╚═╝
+  Universal Agent Memory — persistent, shared context for every AI agent.
+
+\b
+SETUP
+  ctx setup                                  Initialize global store (one-time)
+  ctx init [--force]                         Init project context/ + git hook
+
+\b
+MEMORY
+  ctx save "fixed CORS with headers"         Smart-route to correct scope
+  ctx save -s errors "CORS -> added header"  Save to a specific store
+  ctx context [-q "auth"] [--copy]           Print/copy pasteable context block
+  ctx status                                 Session + store health
+
+\b
+SEARCH
+  ctx search "CORS error"                    Full-text search across all stores
+  ctx lookup "TypeError"                     Cross-project error search
+  ctx files [--print-only]                   Generate/view project file map
+
+\b
+SYNC
+  ctx sync init <remote-url>                 Set up git remote for global store
+  ctx sync push [-m "msg"]                   Commit + push global store
+  ctx sync pull                              Pull latest from remote
+  ctx sync status                            Show sync state
+
+\b
+RECOVERY
+  ctx rebuild-index                          Rebuild SQLite index from errors.jsonl
+
+\b
+EXAMPLES
+  ctx save "prefer composition over inheritance"
+    -> auto-detected as preference, saved to global/preferences.md
+
+  ctx save --store errors "CORS blocked -> Added Allow-Origin header"
+    -> saved to BOTH project errors.md AND global error index
+
+  ctx lookup "CORS"
+    -> searches errors across ALL your projects
+
+  ctx context --query "building auth" --copy
+    -> generates context block, copies to clipboard for web agents
+
+For full docs see: https://github.com/yourusername/SyncMCP
+"""
+
+
+class OrderedGroup(click.Group):
+    """Click group that preserves command insertion order in help."""
+
+    def list_commands(self, ctx: click.Context) -> list[str]:
+        return list(self.commands)
+
+
+@click.group(cls=OrderedGroup, context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(package_name="syncmcp")
 def main() -> None:
     """ctx — Agent memory CLI. Gives every AI agent persistent, shared memory."""
     pass
+
+
+# Override the default help with our custom text
+main.help = HELP_TEXT
 
 
 # ──────────────────────────────────────────────
