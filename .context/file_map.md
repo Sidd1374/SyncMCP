@@ -1,19 +1,15 @@
 # File Map — SyncMCP
 
-_Auto-generated on 2026-04-29 23:56_
+_Auto-generated on 2026-04-30 00:46_
 
 ```
-├── context/
-│   ├── snapshots/
-│   ├── active_task.md
-│   ├── arch.md
-│   ├── errors.md
-│   ├── file_map.md
-│   └── theme.md
 ├── Docs/
+│   ├── AGENTS.md
+│   ├── agents_md.py
 │   ├── CLAUDE.md
 │   ├── cli.py
 │   ├── cursorrules.txt
+│   ├── project_store.py
 │   ├── scanner.py
 │   ├── server.py  # Server entry point
 │   └── SETUP.md
@@ -23,6 +19,7 @@ _Auto-generated on 2026-04-29 23:56_
 ├── src/
 │   └── syncmcp/
 │       ├── __init__.py  # SyncMCP — Two-scope agent memory system with MCP server.
+│       ├── agents_md.py  # Agents.md module — generates unified AI agent rules.
 │       ├── cli.py
 │       ├── error_index.py
 │       ├── file_mapper.py
@@ -34,9 +31,10 @@ _Auto-generated on 2026-04-29 23:56_
 │       ├── session.py
 │       └── sync.py  # Sync module — git-based sync for the global store.
 ├── .gitignore
-├── CLAUDE.md
+├── AGENTS.md
 ├── pyproject.toml  # Python project config
 ├── README.md  # Project documentation
 ├── setup.bat
-└── SETUP.md
+├── SETUP.md
+└── setup.sh
 ```

@@ -126,6 +126,7 @@ class CodeScanner:
         if "claude" in model_name and not os.getenv("ANTHROPIC_API_KEY"):
              return {"error": "No ANTHROPIC_API_KEY found in .env or environment."}
 
+        print(f"🤖 AI Summarizer starting ({model_name})...")
         code_bundle = self.prepare_codebase_summary()
         tree = file_mapper.generate_tree(self.root)
         
@@ -161,7 +162,8 @@ OUTPUT FORMAT (Exactly as follows with triple backticks and labels):
             response = litellm.completion(
                 model=model_name,
                 messages=[{"role": "user", "content": prompt}],
-                api_key=api_key # Can be None if set in environment
+                api_key=api_key, # Can be None if set in environment
+                # For Ollama, we don't need many extra params
             )
             text = response.choices[0].message.content
             

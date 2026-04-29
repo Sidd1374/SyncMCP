@@ -1,0 +1,3 @@
+# Architecture Overview
+The architecture consists of a lightweight, cross-platform Python server (SyncMCP) and an accompanying shell script for setup automation (`setup.sh`). The system operates on top of virtual environments to prevent conflicts with other projects or global settings. 
+(Describe the main components like `get_context`, `scan_project`, etc., along with their silent, automatic executions.)

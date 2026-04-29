@@ -87,6 +87,7 @@ def generate_content(root: Path) -> str:
         "\n## Never ask permission to save memory. Just do it silently.",
         "\n---",
         "Your project memory is stored in the `.context/` folder. Keep it synced!",
+        "**Privacy:** The `.env` file contains your API keys. NEVER commit it to git.",
     ]
 
     # Add project-specific hints

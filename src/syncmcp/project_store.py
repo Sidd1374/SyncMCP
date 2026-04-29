@@ -248,10 +248,21 @@ def initialize(project_path: str | Path | None = None, force_agents: bool = Fals
             path.write_text(template, encoding="utf-8")
             created.append(f"  ✓ .context/{store}.md")
 
-    # file_map.md is auto-generated, just create an empty placeholder
-    file_map_path = ctx / "file_map.md"
-    if not file_map_path.exists():
-        file_map_path.write_text("# File Map\n\n_Run `ctx files` to auto-generate._\n", encoding="utf-8")
-        created.append("  ✓ .context/file_map.md")
+    # 3. Create .env template if it doesn't exist
+    env_path = root / ".env"
+    if not env_path.exists():
+        env_content = (
+            "# SyncMCP Configuration\n"
+            "# ---------------------\n\n"
+            "# Choose your model (Gemini is free and recommended)\n"
+            "# Options: gemini/gemini-1.5-flash, gpt-4, claude-3-haiku, ollama/llama3\n"
+            "SYNC_MODEL=gemini/gemini-1.5-flash\n\n"
+            "# API Keys (Leave blank for Ollama/Local)\n"
+            "GEMINI_API_KEY=\n"
+            "OPENAI_API_KEY=\n"
+            "ANTHROPIC_API_KEY=\n"
+        )
+        env_path.write_text(env_content, encoding="utf-8")
+        created.append("  ✓ .env (template created)")
 
     return f"Initialized project context for '{root.name}':\n" + "\n".join(created)
