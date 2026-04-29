@@ -164,6 +164,10 @@ SETUP
   ctx init [--force]                         Init project context/ + git hook
 
 \b
+SCAN
+  ctx scan [--deep]                          Scan codebase + auto-fill context
+
+\b
 MEMORY
   ctx save "fixed CORS with headers"         Smart-route to correct scope
   ctx save -s errors "CORS -> added header"  Save to a specific store
@@ -252,6 +256,20 @@ def init(project: str | None, force: bool) -> None:
     # Install git hook
     hook_msg = _install_git_hook(project, force)
     click.echo(hook_msg)
+
+
+# ──────────────────────────────────────────────
+#  ctx scan
+# ──────────────────────────────────────────────
+
+@main.command()
+@click.option("--project", "-p", default=None, help="Project root path")
+@click.option("--deep", is_flag=True, help="AI-powered deep scan (requires API key)")
+def scan(project: str | None, deep: bool) -> None:
+    """Deep scan the project to auto-fill context files."""
+    from syncmcp import scanner
+    result = scanner.run_scan(project, deep)
+    click.echo(result)
 
 
 # ──────────────────────────────────────────────

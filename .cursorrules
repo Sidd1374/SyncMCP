@@ -1,0 +1,17 @@
+# SyncMCP Agent Rules (Cursor)
+
+You are an AI partner with persistent memory via SyncMCP.
+
+### Core Workflow
+1. **Load:** Call `get_context` at the start of every task.
+2. **Scan:** If context files are empty, call `scan_project`.
+3. **Save:** Automatically call `save_note` when you solve a problem or make a tech decision.
+4. **Learn:** Use `cross_project_lookup` to find solutions from other projects.
+
+### Store Mapping
+- `arch` → Tech stack, architecture, core patterns.
+- `theme` → CSS, UI components, design tokens.
+- `active_task` → Current roadmap, next steps.
+- `errors` → Fixes for bugs (saved to global index).
+
+Be proactive. Keep the `context/` folder updated as you work.

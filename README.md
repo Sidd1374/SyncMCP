@@ -60,15 +60,18 @@ Or on Windows, just run:
 setup.bat
 ```
 
-### 2. Initialize
+### 2. Initialize & Scan
 
 ```bash
 # Set up the global store (one-time)
 ctx setup
 
-# Initialize context for your current project (creates context/ + installs git hook)
+# Initialize context for your current project
 cd my-project
 ctx init
+
+# Scan the codebase (AI extracts arch, theme, tasks, and TODOs)
+ctx scan
 ```
 
 ### 3. Connect Your Agent
@@ -77,25 +80,10 @@ ctx init
 |-------|------------------|
 | **Claude Code** | `claude mcp add syncmcp -- python -m syncmcp.server` |
 | **Cursor** | Add to `.cursor/mcp.json` |
-| **VS Code + Copilot** | Add to `.vscode/mcp.json` (VS Code 1.99+) |
-| **Claude Desktop** | Add to `claude_desktop_config.json` |
 | **Antigravity** | Add to `%APPDATA%\Antigravity\mcp_config.json` |
 | **Codex / Web agents** | `ctx context --copy` then paste |
 
-All MCP agents use the same JSON config:
-
-```json
-{
-  "mcpServers": {
-    "syncmcp": {
-      "command": "python",
-      "args": ["-m", "syncmcp.server"]
-    }
-  }
-}
-```
-
-> See **[SETUP.md](SETUP.md)** for per-agent config file paths, Antigravity-specific notes, SSE transport, and troubleshooting.
+**Invisible Automation:** SyncMCP now includes `CLAUDE.md` and `.cursorrules`. Copy these to your project root, and your agent will automatically load context, scan empty projects, and save decisions without you ever having to ask.
 
 ---
 
@@ -103,11 +91,11 @@ All MCP agents use the same JSON config:
 
 | Tool | Description |
 |------|-------------|
-| `get_context(query)` | Assembles context from both scopes — call this at the start of every task |
+| `get_context(query)` | Assembles context from both scopes — auto-called on startup |
+| `scan_project()` | AI-powered deep scan to auto-fill architecture, theme, and tasks |
+| `save_note(content)` | Write to memory — auto-routes decisions to arch and errors to index |
 | `search_memory(query)` | Full-text search across all stores using SQLite FTS5 |
-| `save_note(content, store?)` | Write to the correct scope — auto-detects from content keywords |
-| `get_project()` | Returns the complete project context bundle |
-| `cross_project_lookup(error)` | Searches error index across ALL your projects |
+| `cross_project_lookup()` | The "Killer Feature" — find fixes from any of your other projects |
 
 ---
 

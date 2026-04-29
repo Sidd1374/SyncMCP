@@ -1,6 +1,6 @@
 # File Map — SyncMCP
 
-_Auto-generated on 2026-04-29 23:30_
+_Auto-generated on 2026-04-29 23:56_
 
 ```
 ├── context/
@@ -11,6 +11,12 @@ _Auto-generated on 2026-04-29 23:30_
 │   ├── file_map.md
 │   └── theme.md
 ├── Docs/
+│   ├── CLAUDE.md
+│   ├── cli.py
+│   ├── cursorrules.txt
+│   ├── scanner.py
+│   ├── server.py  # Server entry point
+│   └── SETUP.md
 ├── hooks/
 │   ├── post-commit
 │   └── post-commit.py
@@ -23,10 +29,12 @@ _Auto-generated on 2026-04-29 23:30_
 │       ├── global_store.py
 │       ├── hub.py
 │       ├── project_store.py
+│       ├── scanner.py  # Scanner module — AI-powered codebase ingestion.
 │       ├── server.py  # Server entry point
 │       ├── session.py
 │       └── sync.py  # Sync module — git-based sync for the global store.
 ├── .gitignore
+├── CLAUDE.md
 ├── pyproject.toml  # Python project config
 ├── README.md  # Project documentation
 ├── setup.bat

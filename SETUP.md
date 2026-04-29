@@ -38,16 +38,34 @@ On macOS/Linux, set the global store location:
 export AGENT_MEMORY_ROOT="$HOME/.agent-memory"
 ```
 
-### Step 2 — Init each project
-
+### Step 2 — Init & Scan
 Run this inside every project you want SyncMCP to track:
 
 ```bash
 cd your-project
 ctx init
+ctx scan
 ```
 
-This creates `context/` with starter templates, generates `file_map.md`, and installs the git post-commit hook.
+The `ctx scan` command reads your codebase and auto-populates the `context/` folder. It uses regex to find TODOs/FIXMEs and (optionally) an LLM to generate architecture and task summaries.
+
+---
+
+## Invisible Automation (Recommended)
+
+SyncMCP works best when you don't have to think about it. We provide rule files that tell your AI agent exactly how to use the memory tools.
+
+### 1. Claude Code
+Copy `CLAUDE.md` from the SyncMCP repo to your project root.
+- **Effect:** Claude will call `get_context` on every startup and `save_note` whenever you make a decision.
+
+### 2. Cursor
+Copy `.cursorrules` (or rename to `.cursorrules`) from the SyncMCP repo to your project root.
+- **Effect:** Cursor's composer/agent will proactively manage your project memory.
+
+### 3. Antigravity
+Add the following to **Custom Instructions** (Settings → Agent):
+> *"At the start of every task, call get_context. If context is empty, call scan_project. Automatically call save_note when you solve a problem or make a tech decision. Do not ask for permission."*
 
 ---
 

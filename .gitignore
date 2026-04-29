@@ -26,3 +26,4 @@ Thumbs.db
 # SyncMCP runtime (never commit the global DB or chromadb)
 *.db
 .chromadb/
+Docs/*
