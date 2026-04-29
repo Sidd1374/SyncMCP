@@ -1,22 +1,152 @@
 """CLI tool — the `ctx` command for manual saves and non-MCP agents.
 
 Usage:
-    ctx init                              Initialize project context
+    ctx init                              Initialize project context + install hook
     ctx save "fixed CORS by adding headers"  Smart-route to correct scope
-    ctx save --store errors "CORS → headers"  Explicit store
+    ctx save --store errors "CORS -> headers"  Explicit store
     ctx context [--query "auth flow"]      Print pasteable context block
     ctx files [--path .]                   Regenerate file_map.md
     ctx search "CORS error"               Cross-project search
     ctx status                            Show session + stores health
     ctx setup                             Initialize global store
+    ctx sync push|pull|init|status        Sync global store to git remote
 """
 
 from __future__ import annotations
 
+import os
+import shutil
+from pathlib import Path
+
 import click
 
-from syncmcp import hub, global_store, project_store, file_mapper, error_index
+from syncmcp import hub, global_store, project_store, file_mapper, error_index, sync
 
+
+# ──────────────────────────────────────────────
+#  Hook installer helper
+# ──────────────────────────────────────────────
+
+def _find_hooks_source() -> Path | None:
+    """Find the hooks/ directory shipped with the SyncMCP package."""
+    # Try relative to this file (editable install)
+    src_dir = Path(__file__).resolve().parent.parent.parent  # src/syncmcp -> src -> SyncMCP
+    hooks_dir = src_dir / "hooks"
+    if (hooks_dir / "post-commit.py").exists():
+        return hooks_dir
+
+    # Try CWD-based (if running from SyncMCP repo)
+    cwd_hooks = Path.cwd() / "hooks"
+    if (cwd_hooks / "post-commit.py").exists():
+        return cwd_hooks
+
+    return None
+
+
+def _install_git_hook(project_path: str | Path | None, force: bool = False) -> str:
+    """Install the SyncMCP post-commit hook into a project's .git/hooks/.
+
+    Args:
+        project_path: Project root (auto-detect if None)
+        force: Overwrite existing hook if True
+
+    Returns:
+        Status message.
+    """
+    root = project_store.detect_project_root(project_path)
+    if root is None:
+        return "  [SKIP] No .git directory found — hook not installed"
+
+    git_hooks_dir = root / ".git" / "hooks"
+    if not git_hooks_dir.exists():
+        return "  [SKIP] No .git/hooks directory — hook not installed"
+
+    target = git_hooks_dir / "post-commit"
+    hooks_src = _find_hooks_source()
+
+    if hooks_src is None:
+        # Fallback: write a minimal Python hook inline
+        return _write_inline_hook(target, force)
+
+    # Check if a hook already exists
+    if target.exists() and not force:
+        # Check if it's our hook
+        content = target.read_text(encoding="utf-8", errors="ignore")
+        if "syncmcp" in content.lower():
+            return "  [OK] SyncMCP hook already installed"
+        return (
+            "  [SKIP] Existing post-commit hook found (not ours).\n"
+            "  Use 'ctx init --force' to overwrite."
+        )
+
+    # Copy the Python hook as the main post-commit file
+    py_hook = hooks_src / "post-commit.py"
+    # Write a self-contained hook that calls Python
+    hook_content = f"""#!/usr/bin/env python3
+# SyncMCP post-commit hook — auto-installed by 'ctx init'
+# Updates file_map.md and flushes session notes after every commit.
+import subprocess, sys
+from pathlib import Path
+
+def main():
+    try:
+        root = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True, timeout=5,
+        ).stdout.strip()
+        if not root or not Path(root, "context").exists():
+            return
+        from syncmcp import file_mapper
+        file_mapper.update_file_map(root)
+        from syncmcp.session import get_session
+        get_session(root).flush(label="git-hook")
+    except Exception:
+        pass  # Never block a commit
+
+if __name__ == "__main__":
+    main()
+"""
+    target.write_text(hook_content, encoding="utf-8")
+
+    # Make executable on Unix
+    if os.name != "nt":
+        target.chmod(0o755)
+
+    return "  [OK] Git post-commit hook installed"
+
+
+def _write_inline_hook(target: Path, force: bool) -> str:
+    """Write a minimal inline hook when source hooks directory isn't found."""
+    if target.exists() and not force:
+        content = target.read_text(encoding="utf-8", errors="ignore")
+        if "syncmcp" in content.lower():
+            return "  [OK] SyncMCP hook already installed"
+        return "  [SKIP] Existing hook found. Use 'ctx init --force' to overwrite."
+
+    hook_content = """#!/usr/bin/env python3
+# SyncMCP post-commit hook (inline install)
+import subprocess
+from pathlib import Path
+try:
+    root = subprocess.run(["git","rev-parse","--show-toplevel"],
+        capture_output=True,text=True,timeout=5).stdout.strip()
+    if root and Path(root,"context").exists():
+        from syncmcp import file_mapper
+        file_mapper.update_file_map(root)
+        from syncmcp.session import get_session
+        get_session(root).flush(label="git-hook")
+except Exception:
+    pass
+"""
+    target.write_text(hook_content, encoding="utf-8")
+    if os.name != "nt":
+        target.chmod(0o755)
+    return "  [OK] Git post-commit hook installed (inline)"
+
+
+# ──────────────────────────────────────────────
+#  CLI entry point
+# ──────────────────────────────────────────────
 
 @click.group()
 @click.version_option(package_name="syncmcp")
@@ -31,8 +161,9 @@ def main() -> None:
 
 @main.command()
 @click.option("--project", "-p", default=None, help="Project root path (auto-detects if not given)")
-def init(project: str | None) -> None:
-    """Initialize the context/ folder for the current project."""
+@click.option("--force", is_flag=True, help="Overwrite existing git hook")
+def init(project: str | None, force: bool) -> None:
+    """Initialize project context, file map, and git hook."""
     # Ensure global store exists too
     global_msg = global_store.initialize()
     click.echo(global_msg)
@@ -48,7 +179,11 @@ def init(project: str | None) -> None:
         fm_msg = file_mapper.update_file_map(project)
         click.echo(fm_msg)
     except FileNotFoundError:
-        click.echo("⚠️  Could not generate file map (no project root detected)")
+        click.echo("  [SKIP] Could not generate file map (no project root detected)")
+
+    # Install git hook
+    hook_msg = _install_git_hook(project, force)
+    click.echo(hook_msg)
 
 
 # ──────────────────────────────────────────────
@@ -63,7 +198,7 @@ def save(content: str, store: str | None, project: str | None) -> None:
     """Save a note, decision, or error fix to memory.
 
     Auto-detects the right store from content keywords.
-    For errors, use: ctx save "error description → fix"
+    For errors, use: ctx save "error description -> fix"
     """
     result = hub.save_note(content, store, project)
     click.echo(result)
@@ -77,11 +212,11 @@ def save(content: str, store: str | None, project: str | None) -> None:
 @click.option("--query", "-q", default="", help="What you're working on (for relevance)")
 @click.option("--project", "-p", default=None, help="Project root path")
 @click.option("--stores", default=None, help="Comma-separated store filter")
-@click.option("--copy", "-c", is_flag=True, help="Copy to clipboard (requires pyperclip)")
+@click.option("--copy", "-c", is_flag=True, help="Copy to clipboard")
 def context(query: str, project: str | None, stores: str | None, copy: bool) -> None:
     """Print a pasteable context block for web agents.
 
-    Use this to paste memory into ChatGPT, Kimi, or other web tools.
+    Use this to paste memory into ChatGPT, Kimi, Antigravity, or other tools.
     """
     store_list = stores.split(",") if stores else None
     result = hub.get_context(query, project, store_list)
@@ -93,11 +228,11 @@ def context(query: str, project: str | None, stores: str | None, copy: bool) -> 
                 ["clip"], stdin=subprocess.PIPE, shell=True
             )
             process.communicate(result.encode("utf-8"))
-            click.echo("✓ Context copied to clipboard!")
+            click.echo("[OK] Context copied to clipboard!")
             click.echo(f"  ({len(result):,} chars)")
         except Exception:
             click.echo(result)
-            click.echo("\n⚠️  Could not copy to clipboard. Content printed above.")
+            click.echo("\n[WARNING] Could not copy to clipboard. Content printed above.")
     else:
         click.echo(result)
 
@@ -167,7 +302,7 @@ def setup() -> None:
 
 
 # ──────────────────────────────────────────────
-#  ctx lookup (alias for cross_project_lookup)
+#  ctx lookup
 # ──────────────────────────────────────────────
 
 @main.command()
@@ -183,7 +318,54 @@ def lookup(error_pattern: str, limit: int) -> None:
 
 
 # ──────────────────────────────────────────────
-#  ctx rebuild-index (recovery)
+#  ctx sync (group)
+# ──────────────────────────────────────────────
+
+@main.group()
+def sync_cmd() -> None:
+    """Sync the global store to a git remote."""
+    pass
+
+
+# Register as 'ctx sync' (not 'ctx sync-cmd')
+main.add_command(sync_cmd, "sync")
+
+
+@sync_cmd.command("init")
+@click.argument("remote_url", required=False, default=None)
+def sync_init(remote_url: str | None) -> None:
+    """Initialize git repo in global store and set remote.
+
+    Example: ctx sync init https://github.com/user/agent-memory.git
+    """
+    result = sync.sync_init(remote_url)
+    click.echo(result)
+
+
+@sync_cmd.command("push")
+@click.option("--message", "-m", default=None, help="Commit message")
+def sync_push(message: str | None) -> None:
+    """Commit and push global store changes to remote."""
+    result = sync.sync_push(message)
+    click.echo(result)
+
+
+@sync_cmd.command("pull")
+def sync_pull() -> None:
+    """Pull latest global store changes from remote."""
+    result = sync.sync_pull()
+    click.echo(result)
+
+
+@sync_cmd.command("status")
+def sync_status() -> None:
+    """Show sync status of the global store."""
+    result = sync.sync_status()
+    click.echo(result)
+
+
+# ──────────────────────────────────────────────
+#  ctx rebuild-index
 # ──────────────────────────────────────────────
 
 @main.command("rebuild-index")

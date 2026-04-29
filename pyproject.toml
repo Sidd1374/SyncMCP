@@ -1,6 +1,6 @@
 [project]
 name = "syncmcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Two-scope agent memory system with MCP server — gives every AI agent persistent, shared memory"
 readme = "README.md"
 license = { text = "MIT" }

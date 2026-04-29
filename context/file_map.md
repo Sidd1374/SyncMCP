@@ -1,6 +1,6 @@
 # File Map — SyncMCP
 
-_Auto-generated on 2026-04-29 02:57_
+_Auto-generated on 2026-04-29 23:00_
 
 ```
 ├── context/
@@ -12,7 +12,8 @@ _Auto-generated on 2026-04-29 02:57_
 │   └── theme.md
 ├── Docs/
 ├── hooks/
-│   └── post-commit
+│   ├── post-commit
+│   └── post-commit.py
 ├── src/
 │   └── syncmcp/
 │       ├── __init__.py  # SyncMCP — Two-scope agent memory system with MCP server.
@@ -23,7 +24,8 @@ _Auto-generated on 2026-04-29 02:57_
 │       ├── hub.py
 │       ├── project_store.py
 │       ├── server.py  # Server entry point
-│       └── session.py
+│       ├── session.py
+│       └── sync.py  # Sync module — git-based sync for the global store.
 ├── .gitignore
 ├── pyproject.toml  # Python project config
 ├── README.md  # Project documentation

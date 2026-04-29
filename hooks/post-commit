@@ -1,24 +1,14 @@
 #!/bin/sh
-# SyncMCP post-commit hook
-# Auto-updates file_map.md and flushes session notes after every git commit.
-#
-# Install: copy this file to .git/hooks/post-commit (or run 'ctx init')
+# SyncMCP post-commit hook — thin shell wrapper that calls the Python hook.
+# This file works on macOS/Linux. On Windows, Git for Windows runs the .py directly.
 
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-if [ -z "$PROJECT_ROOT" ]; then
-    exit 0
+# Try Python hook first (cross-platform)
+if command -v python3 >/dev/null 2>&1; then
+    python3 "$HOOK_DIR/post-commit.py" 2>/dev/null &
+elif command -v python >/dev/null 2>&1; then
+    python "$HOOK_DIR/post-commit.py" 2>/dev/null &
 fi
-
-# Only run if project has a context/ folder
-if [ ! -d "$PROJECT_ROOT/context" ]; then
-    exit 0
-fi
-
-# Update file map (runs in background to not slow commits)
-python -m syncmcp.file_mapper "$PROJECT_ROOT" > /dev/null 2>&1 &
-
-# Flush any pending session notes
-python -m syncmcp.session --flush "$PROJECT_ROOT" > /dev/null 2>&1 &
 
 exit 0

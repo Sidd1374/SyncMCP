@@ -60,27 +60,30 @@ Or on Windows, just run:
 setup.bat
 ```
 
-> See [SETUP.md](SETUP.md) for detailed setup instructions, agent configurations, and troubleshooting.
-
 ### 2. Initialize
 
 ```bash
 # Set up the global store (one-time)
 ctx setup
 
-# Initialize context for your current project
+# Initialize context for your current project (creates context/ + installs git hook)
 cd my-project
 ctx init
 ```
 
 ### 3. Connect Your Agent
 
-**Claude Code:**
-```bash
-claude mcp add syncmcp -- python -m syncmcp.server
-```
+| Agent | Connection method |
+|-------|------------------|
+| **Claude Code** | `claude mcp add syncmcp -- python -m syncmcp.server` |
+| **Cursor** | Add to `.cursor/mcp.json` |
+| **VS Code + Copilot** | Add to `.vscode/mcp.json` (VS Code 1.99+) |
+| **Claude Desktop** | Add to `claude_desktop_config.json` |
+| **Antigravity** | Add to `%APPDATA%\Antigravity\mcp_config.json` |
+| **Codex / Web agents** | `ctx context --copy` then paste |
 
-**Cursor** (`.cursor/mcp.json`):
+All MCP agents use the same JSON config:
+
 ```json
 {
   "mcpServers": {
@@ -92,23 +95,7 @@ claude mcp add syncmcp -- python -m syncmcp.server
 }
 ```
 
-**Claude Desktop** (`%APPDATA%\Claude\claude_desktop_config.json`):
-```json
-{
-  "mcpServers": {
-    "syncmcp": {
-      "command": "python",
-      "args": ["-m", "syncmcp.server"]
-    }
-  }
-}
-```
-
-**Web Agents** (ChatGPT, Kimi, etc.):
-```bash
-ctx context --query "what I'm working on" --copy
-# Paste from clipboard into your web agent
-```
+> See **[SETUP.md](SETUP.md)** for per-agent config file paths, Antigravity-specific notes, SSE transport, and troubleshooting.
 
 ---
 
@@ -128,14 +115,18 @@ ctx context --query "what I'm working on" --copy
 
 ```bash
 ctx setup                                  # Initialize global store
-ctx init                                   # Initialize project context/
+ctx init [--force]                         # Initialize project context/ + git hook
 ctx save "fixed CORS by adding headers"    # Smart-route to correct scope
-ctx save --store errors "CORS → headers"   # Explicit store target
+ctx save --store errors "CORS -> headers"  # Explicit store target
 ctx context [--query "auth"] [--copy]      # Print/copy pasteable context
 ctx files [--path .]                       # Regenerate file_map.md
 ctx search "CORS error"                    # Full-text search
 ctx lookup "CORS error"                    # Cross-project error search
 ctx status                                 # Session + store health
+ctx sync init <remote-url>                 # Set up git sync for global store
+ctx sync push                              # Commit + push global store
+ctx sync pull                              # Pull latest from remote
+ctx sync status                            # Show sync state
 ctx rebuild-index                          # Recovery: rebuild SQLite from JSONL
 ```
 

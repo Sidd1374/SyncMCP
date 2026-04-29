@@ -140,9 +140,36 @@ def cross_project_lookup(
 # ──────────────────────────────────────────────
 
 def main() -> None:
-    """Start the MCP server."""
-    mcp.run()
+    """Start the MCP server.
+
+    Supports:
+        python -m syncmcp.server                    # stdio (default)
+        python -m syncmcp.server --transport sse    # SSE on port 8765
+        python -m syncmcp.server --transport sse --port 9000
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(description="SyncMCP Memory Server")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse"],
+        default="stdio",
+        help="Transport protocol (default: stdio)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="Port for SSE transport (default: 8765)",
+    )
+    args = parser.parse_args()
+
+    if args.transport == "sse":
+        mcp.run(transport="sse", host="127.0.0.1", port=args.port)
+    else:
+        mcp.run(transport="stdio")
 
 
 if __name__ == "__main__":
     main()
+
