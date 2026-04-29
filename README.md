@@ -64,9 +64,10 @@ setup.bat
 
 ```bash
 # Set up the global store (one-time)
+# Creates C:\.agent-memory (Win) or ~/.agent-memory (Mac/Linux)
 ctx setup
 
-# Initialize context for your current project
+# Initialize context for your current project (creates .context/)
 cd my-project
 ctx init
 
@@ -78,12 +79,12 @@ ctx scan
 
 | Agent | Connection method |
 |-------|------------------|
-| **Claude Code** | `claude mcp add syncmcp -- python -m syncmcp.server` |
-| **Cursor** | Add to `.cursor/mcp.json` |
-| **Antigravity** | Add to `%APPDATA%\Antigravity\mcp_config.json` |
-| **Codex / Web agents** | `ctx context --copy` then paste |
+| **Antigravity** | Reads `AGENTS.md` natively |
+| **Claude Code** | Reads `AGENTS.md` natively |
+| **Cursor** | Reads `AGENTS.md` natively |
+| **Codex / Web** | `ctx context --copy` fallback |
 
-**Invisible Automation:** SyncMCP now includes `CLAUDE.md` and `.cursorrules`. Copy these to your project root, and your agent will automatically load context, scan empty projects, and save decisions without you ever having to ask.
+**One File to Rule Them All:** `ctx init` now creates an `AGENTS.md` in your project root. This file contains the "invisible instructions" that tell all your AI tools to load context, scan codebases, and save decisions automatically. Your project memory is stored in the hidden `.context/` folder.
 
 ---
 

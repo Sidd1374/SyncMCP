@@ -407,7 +407,7 @@ def status(project_path: str | None = None) -> str:
         root = project_store.detect_project_root(project_path)
         if root:
             lines.append(f"- Project: {root.name}")
-            lines.append(f"- Context: {root / 'context'}")
+            lines.append(f"- Context: {root / '.context'}")
             for store_name in project_store.PROJECT_STORES:
                 content = project_store.read_store(store_name, project_path)
                 size = len(content) if content else 0

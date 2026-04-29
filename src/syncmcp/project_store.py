@@ -50,7 +50,7 @@ def detect_project_root(start_path: str | Path | None = None) -> Path | None:
 
 
 def context_dir(project_path: str | Path | None = None) -> Path:
-    """Get the context/ directory for a project.
+    """Get the .context/ directory for a project.
 
     Args:
         project_path: Explicit project root. Auto-detects if None.
@@ -67,7 +67,7 @@ def context_dir(project_path: str | Path | None = None) -> Path:
                 "Could not detect project root. "
                 "Run 'ctx init' inside a project, or pass --project <path>."
             )
-    return root / "context"
+    return root / ".context"
 
 
 def _store_path(store: str, project_path: str | Path | None = None) -> Path:
@@ -117,7 +117,7 @@ def write_store(
         entry = f"\n\n---\n_Added: {now}_\n\n{content}"
         path.write_text(existing + entry, encoding="utf-8")
 
-    return f"✓ Saved to context/{store}.md ({mode})"
+    return f"✓ Saved to .context/{store}.md ({mode})"
 
 
 def read_all(project_path: str | Path | None = None) -> dict[str, str]:
@@ -143,7 +143,7 @@ def save_snapshot(
     project_path: str | Path | None = None,
     label: str | None = None,
 ) -> str:
-    """Save a session snapshot to context/snapshots/.
+    """Save a session snapshot to .context/snapshots/.
 
     Args:
         content: The snapshot content (compressed session notes)
@@ -218,11 +218,14 @@ _Design tokens, color palette, UI component patterns for this project._
 }
 
 
-def initialize(project_path: str | Path | None = None) -> str:
-    """Initialize the context/ folder for a project.
+from syncmcp import agents_md
 
-    Creates the directory structure and starter templates.
-    Does NOT overwrite existing files.
+
+def initialize(project_path: str | Path | None = None, force_agents: bool = False) -> str:
+    """Initialize the .context/ folder for a project.
+
+    Creates the directory structure, starter templates, and AGENTS.md.
+    Does NOT overwrite existing context files, but can force-regen AGENTS.md.
 
     Returns:
         Summary of what was created.
@@ -230,22 +233,25 @@ def initialize(project_path: str | Path | None = None) -> str:
     ctx = context_dir(project_path)
     ctx.mkdir(parents=True, exist_ok=True)
     (ctx / "snapshots").mkdir(exist_ok=True)
+    
+    root = detect_project_root(project_path) or Path(project_path or os.getcwd())
     created: list[str] = []
 
+    # 1. Create AGENTS.md in project root
+    agents_msg = agents_md.write(root, force=force_agents)
+    created.append(agents_msg)
+
+    # 2. Create starter context files if they don't exist
     for store, template in _STARTER_TEMPLATES.items():
         path = ctx / f"{store}.md"
         if not path.exists():
             path.write_text(template, encoding="utf-8")
-            created.append(f"  ✓ context/{store}.md")
+            created.append(f"  ✓ .context/{store}.md")
 
     # file_map.md is auto-generated, just create an empty placeholder
     file_map_path = ctx / "file_map.md"
     if not file_map_path.exists():
         file_map_path.write_text("# File Map\n\n_Run `ctx files` to auto-generate._\n", encoding="utf-8")
-        created.append("  ✓ context/file_map.md")
+        created.append("  ✓ .context/file_map.md")
 
-    if not created:
-        return f"Project context already initialized at {ctx}"
-
-    root = detect_project_root(project_path) or Path(project_path or os.getcwd())
     return f"Initialized project context for '{root.name}':\n" + "\n".join(created)

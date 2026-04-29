@@ -36,8 +36,8 @@ class CodeScanner:
             if not path.is_file():
                 continue
                 
-            # Skip the context folder itself
-            if "context" in path.parts:
+            # Skip the .context folder itself
+            if ".context" in path.parts:
                 continue
 
             # Respect all skip rules from file_mapper
@@ -107,14 +107,19 @@ class CodeScanner:
 
         return "\n".join(summary)
 
-    def ai_summarize(self, provider: str = "google", api_key: str | None = None) -> dict[str, str]:
-        """Send codebase to LLM and get structured context files back."""
-        api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+    def ai_summarize(self, api_key: str | None = None) -> dict[str, str]:
+        """Send codebase to Gemini and get structured context files back."""
+        import google.generativeai as genai
+        
+        api_key = api_key or os.getenv("GEMINI_API_KEY")
         if not api_key:
             return {
-                "error": "No API key found. Set GEMINI_API_KEY or ANTHROPIC_API_KEY."
+                "error": "No Gemini API key found. Set GEMINI_API_KEY."
             }
 
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash") # Efficient for code analysis
+        
         code_bundle = self.prepare_codebase_summary()
         tree = file_mapper.generate_tree(self.root)
         
@@ -127,37 +132,45 @@ PROJECT TREE:
 CODEBASE SNIPPETS:
 {code_bundle}
 
-OUTPUT FORMAT:
----ARCH---
-(Markdown describing tech stack, high-level architecture, and core dependencies)
+OUTPUT FORMAT (Exactly as follows with triple backticks and labels):
 
----THEME---
-(Markdown describing UI/UX patterns, design tokens, styling approach, and naming conventions)
+```arch
+# Architecture
+(Describe stack, high-level structure, core logic)
+```
 
----TASK---
-(Markdown describing the current state of the project and what a developer should work on next)
+```theme
+# Theme & UI
+(Describe styling, UI components, design patterns)
+```
+
+```task
+# Active Task
+(Describe current state and next steps)
+```
 """
 
-        # Basic implementation for Gemini/Anthropic (using raw requests or simple wrappers)
-        # For simplicity in this script, we'll use a placeholder that assumes the user
-        # will run this through an agent or we'll add a more robust client later.
-        
-        # Note: In a real implementation, we'd use 'google-generativeai' or 'anthropic' packages.
-        # Since I am an agent, I will simulate the "AI reasoning" part for the local CLI if possible,
-        # or provide a way to call it.
-        
-        return self._mock_ai_call(prompt) # In reality, call the API here.
+        try:
+            response = model.generate_content(prompt)
+            text = response.text
+            
+            # Parse sections using regex
+            arch = re.search(r"```arch\n(.*?)\n```", text, re.DOTALL)
+            theme = re.search(r"```theme\n(.*?)\n```", text, re.DOTALL)
+            task = re.search(r"```task\n(.*?)\n```", text, re.DOTALL)
+            
+            return {
+                "arch": arch.group(1) if arch else "# Architecture\n(Parsing failed)",
+                "theme": theme.group(1) if theme else "# Theme\n(Parsing failed)",
+                "task": task.group(1) if task else "# Active Task\n(Parsing failed)"
+            }
+        except Exception as e:
+            return {"error": f"AI call failed: {str(e)}"}
 
     def _mock_ai_call(self, prompt: str) -> dict[str, str]:
-        """Placeholder for actual API call. In the CLI, we'll prompt for keys."""
-        # For the sake of the 'ctx scan' command being useful immediately,
-        # we'll implement a 'Local Scan' that doesn't need AI for TODOs
-        # and asks the user to manually verify the others.
-        return {
-            "arch": "# Architecture\n(Run 'ctx scan --ai' to generate via LLM)",
-            "theme": "# Theme\n(Run 'ctx scan --ai' to generate via LLM)",
-            "task": "# Active Task\n(Run 'ctx scan --ai' to generate via LLM)"
-        }
+        # This is now handled by ai_summarize
+        return {}
+
 
 def run_scan(project_path: str | Path | None = None, deep: bool = False) -> str:
     """Run a full scan and update all context stores."""
@@ -171,13 +184,22 @@ def run_scan(project_path: str | Path | None = None, deep: bool = False) -> str:
     project_store.write_store("errors", todos, scanner.root, mode="replace")
     
     # 3. AI Update (optional)
-    # If deep=True and API key exists, we'd do the AI calls here.
-    # For now, we'll initialize the files if they are empty.
-    
+    if deep:
+        results = scanner.ai_summarize()
+        if "error" in results:
+            return f"✓ TODOs scanned, but AI failed: {results['error']}"
+        
+        for store in ["arch", "theme", "active_task"]:
+            if store in results:
+                project_store.write_store(store, results[store], scanner.root, mode="replace")
+        
+        return f"✓ Deep scan complete! Updated file_map, architecture, theme, and tasks."
+
+    # Standard scan initializes files if empty
     for store in ["arch", "theme", "active_task"]:
         content = project_store.read_store(store, scanner.root)
         if not content or "empty" in content.lower() or "run 'ctx scan'" in content.lower():
-            placeholder = f"# {store.replace('_', ' ').title()}\nAuto-generated placeholder. Use 'ctx save' or 'ctx scan --ai' to fill."
+            placeholder = f"# {store.replace('_', ' ').title()}\nAuto-generated placeholder. Use 'ctx save' or 'ctx scan --deep' to fill."
             project_store.write_store(store, placeholder, scanner.root, mode="replace")
 
     return f"✓ Codebase scanned. Updated file_map.md and errors.md with {todos.count('- [')} TODOs."

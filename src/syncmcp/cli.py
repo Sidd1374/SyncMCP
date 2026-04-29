@@ -161,7 +161,7 @@ HELP_TEXT = """\
 \b
 SETUP
   ctx setup                                  Initialize global store (one-time)
-  ctx init [--force]                         Init project context/ + git hook
+  ctx init [--regen-agents]                  Init context/ + AGENTS.md
 
 \b
 SCAN
@@ -234,15 +234,16 @@ main.help = HELP_TEXT
 @main.command()
 @click.option("--project", "-p", default=None, help="Project root path (auto-detects if not given)")
 @click.option("--force", is_flag=True, help="Overwrite existing git hook")
-def init(project: str | None, force: bool) -> None:
-    """Initialize project context, file map, and git hook."""
+@click.option("--regen-agents", is_flag=True, help="Regenerate AGENTS.md file")
+def init(project: str | None, force: bool, regen_agents: bool) -> None:
+    """Initialize project context, file map, AGENTS.md, and git hook."""
     # Ensure global store exists too
     global_msg = global_store.initialize()
     click.echo(global_msg)
     click.echo()
 
-    # Initialize project context
-    project_msg = project_store.initialize(project)
+    # Initialize project context (creates context/ and AGENTS.md)
+    project_msg = project_store.initialize(project, force_agents=regen_agents)
     click.echo(project_msg)
     click.echo()
 

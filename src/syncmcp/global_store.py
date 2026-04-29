@@ -14,7 +14,14 @@ from pathlib import Path
 from typing import Any
 
 # Default global store root — can be overridden via AGENT_MEMORY_ROOT env var
-GLOBAL_ROOT = Path(os.environ.get("AGENT_MEMORY_ROOT", r"C:\AgentMemory"))
+def _get_default_root() -> Path:
+    if "AGENT_MEMORY_ROOT" in os.environ:
+        return Path(os.environ["AGENT_MEMORY_ROOT"])
+    if os.name == "nt":
+        return Path(r"C:\.agent-memory")
+    return Path.home() / ".agent-memory"
+
+GLOBAL_ROOT = _get_default_root()
 
 # All known global markdown stores
 GLOBAL_STORES = ("preferences", "arch_patterns", "tech_stack")

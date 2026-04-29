@@ -47,25 +47,23 @@ ctx init
 ctx scan
 ```
 
-The `ctx scan` command reads your codebase and auto-populates the `context/` folder. It uses regex to find TODOs/FIXMEs and (optionally) an LLM to generate architecture and task summaries.
+The `ctx scan` command reads your codebase and auto-populates the `.context/` folder. It uses regex to find TODOs/FIXMEs and (optionally) an LLM to generate architecture and task summaries.
 
 ---
 
-## Invisible Automation (Recommended)
+## Unified Agent Rules (`AGENTS.md`)
 
-SyncMCP works best when you don't have to think about it. We provide rule files that tell your AI agent exactly how to use the memory tools.
+SyncMCP works best when you don't have to think about it. The `ctx init` command automatically generates an `AGENTS.md` file in your project root. 
 
-### 1. Claude Code
-Copy `CLAUDE.md` from the SyncMCP repo to your project root.
-- **Effect:** Claude will call `get_context` on every startup and `save_note` whenever you make a decision.
+This file is a "unified instructions" document read by:
+1. **Antigravity** (v1.20.3+): Reads `AGENTS.md` natively for every workspace.
+2. **Claude Code**: Uses it to understand how to interact with MCP tools.
+3. **Cursor**: Configures the agent's behavior for that project.
 
-### 2. Cursor
-Copy `.cursorrules` (or rename to `.cursorrules`) from the SyncMCP repo to your project root.
-- **Effect:** Cursor's composer/agent will proactively manage your project memory.
-
-### 3. Antigravity
-Add the following to **Custom Instructions** (Settings → Agent):
-> *"At the start of every task, call get_context. If context is empty, call scan_project. Automatically call save_note when you solve a problem or make a tech decision. Do not ask for permission."*
+### Why this is better:
+- **Zero Configuration:** Your agent will call `get_context` and `save_note` automatically.
+- **Stack Aware:** The file detects your tech stack (e.g., Next.js, FastAPI, Flutter) and adds project-specific rules.
+- **Portable:** Commit `AGENTS.md` to Git, and every teammate using SyncMCP gets the same optimized agent behavior. All project memory stays hidden in `.context/`.
 
 ---
 
